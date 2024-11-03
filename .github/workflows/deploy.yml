@@ -5,18 +5,15 @@
 ##  Edit source in /src/github/workflows/ instead!  ##
 ##                                                  ##
 ######################################################
+
+name: Deploy
+on:
+  push:
+    branches: "*"
 defaults:
   run:
     shell: bash
 jobs:
-  auto-cancel:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion
-      == 'success' }}
-    runs-on: Ubuntu-latest
-    steps:
-    - uses: styfle/cancel-workflow-action@0.12.1
-      with:
-        access_token: ${{ github.token }}
   build:
     env:
       ARGS: --disable-executable-profiling --disable-library-profiling
@@ -24,8 +21,6 @@ jobs:
       MACOS_ARGS: --flags=enable-cluster-counting
       MATRIX_OS: ${{ matrix.os }}
       WIN64_ARGS: --flags=enable-cluster-counting  --enable-split-sections
-    if: ${{ !cancelled() }}
-    needs: auto-cancel
     outputs:
       sha: ${{ steps.vars.outputs.sha }}
     runs-on: ${{ matrix.os }}
@@ -234,47 +229,3 @@ jobs:
         - macos-15
         - macos-15-arm64
         - ubuntu-latest
-  deploy:
-    if: ${{ !cancelled() }}
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        sparse-checkout: .
-    - uses: actions/download-artifact@v4
-      with:
-        path: artifacts
-    - env:
-        GITHUB_TOKEN: ${{ github.token }}
-      if: ${{ github.ref == 'refs/heads/master' }}
-      name: Create/replace the nightly release and upload artifacts as release assets
-      run: |
-        gh release delete 'nightly' --repo "${GITHUB_REPOSITORY}" --cleanup-tag --yes || true
-        ls -R artifacts
-        gh release create 'nightly' artifacts/**/* --repo "${GITHUB_REPOSITORY}" --generate-notes --notes-start-tag v2.7.0 --prerelease --title "${{ needs.build.outputs.sha }}@master"
-    - env:
-        GITHUB_TOKEN: ${{ github.token }}
-      if: startsWith(github.ref, 'refs/tags/v')
-      name: Create a release with the bindist as release assets
-      run: |
-        echo "GITHUB_REF_NAME=${GITHUB_REF_NAME}"
-        echo "GITHUB_REPOSITORY=${GITHUB_REPOSITORY}"
-
-        gh release delete "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --yes || true
-        gh release create "${GITHUB_REF_NAME}" -d --notes-file CHANGELOG.md --title "${GITHUB_REF_NAME}"
-        ls -R artifacts
-        gh release upload "${GITHUB_REF_NAME}" artifacts/**/* --repo "${GITHUB_REPOSITORY}"
-name: Deploy
-'on':
-  push:
-    tags:
-    - v[2-9]+.*
-  workflow_dispatch: null
-  workflow_run:
-    branches:
-    - master
-    types:
-    - completed
-    workflows:
-    - Build, Test, and Benchmark
