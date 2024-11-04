@@ -94,6 +94,7 @@ jobs:
       name: Set up Alpine Linux with GHC and the static library for ICU
       uses: jirutka/setup-alpine@v1
       with:
+        arch: aarch64
         packages: |
           cabal g++ gcc icu-static ncurses-dev ncurses-static musl-dev zlib-static zlib-dev
     - id: setup-haskell
@@ -225,7 +226,4 @@ jobs:
         ghc-ver:
         - '9.10'
         os:
-        - windows-latest
-        - macos-14
-        - macos-14-arm64
         - ubuntu-latest
