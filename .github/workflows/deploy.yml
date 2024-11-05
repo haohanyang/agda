@@ -8,6 +8,7 @@
 
 name: Deploy
 on:
+
   push:
     branches: "*"
 defaults:
